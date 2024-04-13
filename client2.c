@@ -8,16 +8,34 @@
 #include <sys/time.h>
 #include <stdbool.h>
 
-#define PORT_OUT1 4001
-#define PORT_OUT2 4002
-#define PORT_OUT3 4003
-#define NUM_SOCKETS 3
+#define PORT_CONTROL_UDP 4000
+#define PORT_OUT1_TCP 4001
+#define PORT_OUT2_TCP 4002
+#define PORT_OUT3_TCP 4003
+#define NUM_SOCKETS 4
 #define BUFFER_SIZE 64
+#define IP_ADDR "127.0.0.1"
 
-int create_socket(int port) {
+int create_udp_socket(int port) {
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("ERROR opening UDP socket");
+        exit(1);
+    }
+
+    struct sockaddr_in udp_server_addr;
+    memset(&udp_server_addr, 0, sizeof(udp_server_addr));
+    udp_server_addr.sin_family = AF_INET;
+    udp_server_addr.sin_port = htons(port);
+    udp_server_addr.sin_addr.s_addr = inet_addr(IP_ADDR);
+
+    return sockfd;
+}
+
+int create_tcp_socket(int port) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("ERROR opening socket");
+        perror("ERROR TCP opening socket");
         exit(1);
     }
 
@@ -25,10 +43,10 @@ int create_socket(int port) {
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_addr.s_addr = inet_addr(IP_ADDR);
 
     if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("ERROR connecting");
+        perror("ERROR connecting to TCP socket");
         close(sockfd);
         exit(1);
     }
@@ -54,7 +72,7 @@ void process_output3(float val, bool *isOverLimit) {
 }
 
 int main() {
-    int sockets[NUM_SOCKETS] = {create_socket(PORT_OUT1), create_socket(PORT_OUT2), create_socket(PORT_OUT3)};
+    int sockets[NUM_SOCKETS] = {create_tcp_socket(PORT_OUT1_TCP), create_tcp_socket(PORT_OUT2_TCP), create_tcp_socket(PORT_OUT3_TCP), create_udp_socket(PORT_CONTROL_UDP)};
     int maxfd = 0;
     for (int i = 0; i < NUM_SOCKETS; i++) {
         maxfd = (sockets[i] > maxfd) ? sockets[i] : maxfd;
