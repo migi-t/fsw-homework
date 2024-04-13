@@ -12,11 +12,12 @@
 #define PORT_OUT3 4003
 #define NUM_SOCKETS 3
 #define BUFFER_SIZE 64
+#define IP_ADDR "127.0.0.1"
 
 int create_socket(int port) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("ERROR opening socket");
+        perror("ERROR opening TCP socket");
         exit(1);
     }
 
@@ -24,10 +25,10 @@ int create_socket(int port) {
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_addr.s_addr = inet_addr(IP_ADDR);
 
     if (connect(sockfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("ERROR connecting");
+        perror("ERROR connecting to TCP socket");
         close(sockfd);
         exit(1);
     }

@@ -12,30 +12,47 @@
 #define PORT_OUT1_TCP 4001
 #define PORT_OUT2_TCP 4002
 #define PORT_OUT3_TCP 4003
+#define NUM_TCP_SOCKETS 3
 #define NUM_SOCKETS 4
 #define BUFFER_SIZE 64
 #define IP_ADDR "127.0.0.1"
 
+struct message {
+    uint16_t operation;     // 1 = read, 2 = write
+    uint16_t object;        // 1 = out1, 2 = out2, 3 = out3
+    uint16_t property;      // Enabled = 14, Ampl = 170, Freq = 255, glitch_chance = 300
+    uint16_t value;         // Enabled [0, 1], Ampl [1000, 10000], Freq [50, 2000 (ms ?)], glitch_chance [0, 100 (% ?)]
+};
+
+int udp_sockfd;
+struct sockaddr_in udp_server_addr;
+
 int create_udp_socket(int port) {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
+    if ((udp_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("ERROR opening UDP socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    struct sockaddr_in udp_server_addr;
     memset(&udp_server_addr, 0, sizeof(udp_server_addr));
     udp_server_addr.sin_family = AF_INET;
     udp_server_addr.sin_port = htons(port);
     udp_server_addr.sin_addr.s_addr = inet_addr(IP_ADDR);
 
-    return sockfd;
+    return udp_sockfd;
+}
+
+void send_udp_message(struct message msg) {
+    if (sendto(udp_sockfd, &msg, sizeof(msg), 0, (const struct sockaddr *)&udp_server_addr, sizeof(udp_server_addr)) < 0) {
+        perror("UDP Control message sending failed");
+        close(udp_sockfd);
+        exit(1);
+    }
 }
 
 int create_tcp_socket(int port) {
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        perror("ERROR TCP opening socket");
+        perror("ERROR opening TCP socket");
         exit(1);
     }
 
@@ -60,21 +77,39 @@ void print_output(long long timestamp_ms, char *outputs[]) {
                             timestamp_ms, outputs[0], outputs[1], outputs[2]);
 }
 
-// Only react when the output3 crosses the limit
+// Only reacts when the output3 crosses the limit
 void process_output3(float val, bool *isOverLimit) {
+
+    // output3 value went over 3.0
     if (*isOverLimit == false && val >= 3.0) {
-        printf("output3 went over 3\n");
         *isOverLimit = true;
+
+        // output1 frequency -> 1Hz (i.e., 1s cycle time)
+        struct message write_msg_freq = {htons(2), htons(1), htons(255), htons(1000)};
+        send_udp_message(write_msg_freq);
+
+        // output1 amplitude -> 8000
+        struct message write_msg_ampl = {htons(2), htons(1), htons(170), htons(8000)};
+        send_udp_message(write_msg_ampl);
+
+    // output3 value went under 3.0
     } else if (*isOverLimit == true && val < 3.0) {
-        printf("output3 went under 3\n");
         *isOverLimit = false;
+
+        // output1 frequency -> 2Hz (i.e., 0.5s cycle time)
+        struct message write_msg_freq = {htons(2), htons(1), htons(255), htons(500)};
+        send_udp_message(write_msg_freq);
+
+        // output1 amplitude -> 4000
+        struct message write_msg_ampl = {htons(2), htons(1), htons(170), htons(4000)};
+        send_udp_message(write_msg_ampl);
     }
 }
 
 int main() {
     int sockets[NUM_SOCKETS] = {create_tcp_socket(PORT_OUT1_TCP), create_tcp_socket(PORT_OUT2_TCP), create_tcp_socket(PORT_OUT3_TCP), create_udp_socket(PORT_CONTROL_UDP)};
     int maxfd = 0;
-    for (int i = 0; i < NUM_SOCKETS; i++) {
+    for (int i = 0; i < NUM_TCP_SOCKETS; i++) {
         maxfd = (sockets[i] > maxfd) ? sockets[i] : maxfd;
     }
     maxfd += 1;
@@ -96,7 +131,7 @@ int main() {
     gettimeofday(&last_print_time, NULL);
     while (1) {
         FD_ZERO(&readfds);
-        for (int i = 0; i < NUM_SOCKETS; i++) {
+        for (int i = 0; i < NUM_TCP_SOCKETS; i++) {
             FD_SET(sockets[i], &readfds);
         }
 
@@ -108,8 +143,8 @@ int main() {
             exit(1);
         }
 
-        // Loop over our sockets
-        for (int i = 0; i < NUM_SOCKETS; i++) {
+        // Loop over our TCP sockets
+        for (int i = 0; i < NUM_TCP_SOCKETS; i++) {
 
             // Check if a socket has new events
             if (FD_ISSET(sockets[i], &readfds)) {
