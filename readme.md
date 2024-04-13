@@ -18,7 +18,7 @@ I dont know what properties of a satellite system these values are depicting, bu
 # Task 2
 Built the Client2 on top of the Client1. Added the UDP socket connection, changed from 100ms loops to 20ms, added logic about the output values from the output3, figured out the Control Message structure and implemented the Control Message sending. Figuring out the accepted values for the control message fields Property and Value took a long time, I ended up making a simple C program to go over the possible values for the Property field, while using invalid value in the Value field (code in utils/cntrl_msg_discovery.c). This was possible since the server prints error messages to STDOUT upon invalid control messages. Idk if this was a planned part of the task or if I misunderstood something. But anyways, when running client2 it is evident that the control messages are working, as the server prints OK messages upon changes. Also the prints show the altering amplitudes of output1 and timestamps are valid. I again used the python script to plot a snippet of the client2 output, see the graph below.  
 
-
+![task2](https://github.com/migi-t/fsw-homework/assets/77881230/c8b4717b-141b-4313-b34c-5d81fd0a0684)
 
 Based on it the changing amplitudes and frequencies of output1 (blue line) are clear. 
 
