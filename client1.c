@@ -5,15 +5,24 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #define PORT_OUT1 4001
 #define BUFFER_SIZE 64
+
+long long current_time_ms() {
+    struct timeval te; 
+    gettimeofday(&te, NULL); // Get current time
+    long long milliseconds = te.tv_sec * 1000LL + te.tv_usec / 1000; // Calculate milliseconds
+    return milliseconds;
+}
 
 int main() {
     int clientSocket;
     struct sockaddr_in serverAddr;
     char buffer[BUFFER_SIZE];
     int bytesReceived;
+    long long timestamp_ms;
 
     // Create the socket
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,8 +46,14 @@ int main() {
 
     // Receive data from the server
     while ((bytesReceived = recv(clientSocket, buffer, BUFFER_SIZE - 1, 0)) > 0) {
-        buffer[bytesReceived] = '\0';  // Null-terminate the buffer
-        printf("Received from OUT1: %s\n", buffer);
+        // Null-terminate the buffer, and remove trailing newline
+        if (buffer[bytesReceived - 1] == '\n') {
+            buffer[bytesReceived - 1] = '\0';
+        } else {
+            buffer[bytesReceived] = '\0';
+        }
+        timestamp_ms = current_time_ms();
+        printf("{\"timestamp\": %lld, \"out1\": \"%s\"}\n", timestamp_ms, buffer);
     }
 
     if (bytesReceived < 0) {
