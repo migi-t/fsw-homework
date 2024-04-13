@@ -1,13 +1,17 @@
 CC=gcc
 CFLAGS=-Wall -g
-TARGET=client1
+TARGET1=client1
+TARGET2=client2
 
-all: $(TARGET)
+all: $(TARGET1) $(TARGET2)
 
-$(TARGET): client1.c
-	$(CC) $(CFLAGS) -o $(TARGET) client1.c
+$(TARGET1): client1.c
+	$(CC) $(CFLAGS) -o $(TARGET1) client1.c
+
+$(TARGET2): client2.c
+	$(CC) $(CFLAGS) -o $(TARGET2) client2.c
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET1) $(TARGET2)
 
-.PHONY: clean
+.PHONY: all clean
