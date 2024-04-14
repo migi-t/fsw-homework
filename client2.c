@@ -157,7 +157,7 @@ int main() {
                     buffer[bytesReceived] = '\0';
                     // (Try to) Parse the float value from the buffer into out_value
                     if (sscanf(buffer, "%f", &out_value) == 1) {
-                        // Store the parsed value as a string
+                        // Store the parsed value as a string, causes mem leak?
                         char val_str[16];
                         snprintf(val_str, sizeof(val_str), "%0.1f", out_value);
                         outputs[i] = strdup(val_str);
@@ -179,6 +179,11 @@ int main() {
             last_print_time = now;
             outputs[0] = outputs[1] = outputs[2] = "--";    // Reset output values, chained assigment
         }
+    }
+
+    // Close open sockets before exiting (although it's unreachable in this infinite loop)
+    for (int i = 0; i < NUM_SOCKETS; i++) {
+        close(sockets[i]);
     }
 
     return 0;
